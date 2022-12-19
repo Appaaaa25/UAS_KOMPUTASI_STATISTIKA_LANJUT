@@ -1,0 +1,146 @@
+---
+title: "UAS Komputasi Statistika Lanjut"
+author: "Nurul Zalfa Latif"
+date: '2022-12-17'
+output: html_document
+---
+
+TEXT MINING DENGAN ANALISIS DI R STUDIO
+
+##Menginstal dan memuat paket R
+Paket berikut digunakan dalam contoh di artikel ini:
+
+- tm untuk operasi penambangan teks seperti menghapus angka, karakter khusus, tanda baca, dan kata-kata berhenti (Kata-kata berhenti dalam bahasa apa pun adalah kata-kata yang paling sering muncul yang memiliki nilai sangat kecil untuk NLP dan harus disaring. Contoh kata-kata berhenti dalam bahasa Inggris adalah "the ”, “adalah”, “adalah”.)
+- snowballc untuk stemming, yaitu proses mereduksi kata menjadi bentuk dasar atau akarnya. Misalnya, algoritma stemming akan mereduksi kata “fishing”, “fished” dan “fisher” menjadi stem “fish”.
+- wordcloud untuk menghasilkan plot cloud kata.
+- RColorBrewer untuk palet warna yang digunakan di berbagai plot
+- syuzhet untuk skor sentimen dan klasifikasi emosi
+- ggplot2 untuk memplot grafik
+Gunakan kode berikut untuk menginstal dan memuat paket-paket ini.
+
+```{r}
+
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+library(syuzhet)
+library(ggplot2)
+
+```
+
+##Membaca data file ke dalam R
+Fungsi dasar R read.table()umumnya digunakan untuk membaca file dalam format tabel dan mengimpor data sebagai bingkai data. Beberapa varian dari fungsi ini tersedia, untuk mengimpor format file yang berbeda;
+
+- read.csv() digunakan untuk membaca file nilai yang dipisahkan koma (csv), di mana koma "," digunakan sebagai pemisah bidang
+
+```{r }
+# import data teks
+Data_Voice <- read.csv("D:/MATERI SEMESTER 5 NURUL ZALFA LATIF/KOMPUTASI STATISTIK LANJUT/Data_Voice.csv", stringsAsFactors=TRUE)
+text_unique <- Data_Voice$reviews_list
+```
+
+Di skrip R Anda, tambahkan kode berikut untuk memuat data ke dalam korpus.
+
+```{r cars}
+# konversi vektor teks menjadi kumpulan dokumen
+words.vec <- VectorSource(text_unique)
+words.corpus <- Corpus(words.vec)
+```
+
+##Membersihkan Data Teks
+Pembersihan data teks dimulai dengan melakukan transformasi seperti menghilangkan karakter khusus dari teks. Ini dilakukan dengan menggunakan tm_map()fungsi untuk mengganti karakter khusus seperti /, @ dan |dengan spasi. Langkah selanjutnya adalah menghapus spasi yang tidak perlu dan mengonversi teks menjadi huruf kecil.
+
+Kemudian hapus stopwords . Mereka adalah kata yang paling sering muncul dalam suatu bahasa dan memiliki nilai yang sangat kecil dalam hal mendapatkan informasi yang berguna. Mereka harus dihapus sebelum melakukan analisis lebih lanjut. Contoh stopword dalam bahasa Inggris adalah “the, is, at, on ” . Tidak ada satu pun daftar stopword universal yang digunakan oleh semua alat NLP. stopwordsdalam tm_map()fungsinya mendukung beberapa bahasa seperti Inggris, Prancis, Jerman, Italia, dan Spanyol. Harap diperhatikan bahwa nama bahasa peka huruf besar-kecil. Saya juga akan mendemonstrasikan cara menambahkan daftar stopwords Anda sendiri, yang berguna dalam contoh Team Health ini untuk menghapus kata-kata stop non-default seperti "tim", "perusahaan", "kesehatan". Selanjutnya, hapus angka dan tanda baca.
+
+Langkah terakhir adalah text stemming. Ini adalah proses mereduksi kata menjadi bentuk akarnya. Proses stemming menyederhanakan kata ke asalnya yang sama. Misalnya, proses stemming mereduksi kata “fishing”, “fished” dan “fisher” menjadi kata dasarnya “fish”. Harap diperhatikan bahwa stemming menggunakan paket SnowballC . (Anda mungkin ingin melewatkan langkah stemming teks jika pengguna Anda menunjukkan preferensi untuk melihat kata-kata asli "tanpa stemming" di plot awan kata)
+
+Dalam skrip R Anda, tambahkan kode berikut untuk mengubah dan menjalankan untuk membersihkan data teks.
+```{r}
+# buat transformator konten yang menggantikan pola string dengan spasi
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs <- tm_map(words.corpus, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+
+# mengubah teks menjadi huruf kecil
+docs <- tm_map(docs, content_transformer(tolower))
+
+# Menghapus Angka
+docs <- tm_map(docs, removeNumbers)
+
+#hapus stopwords umum bahasa Inggris
+docs <- tm_map(docs, removeWords, stopwords("english"))
+
+#remove punctuations
+docs <- tm_map(docs, removePunctuation)
+
+# menghilangkan ruang putih ekstra
+docs <- tm_map(docs, stripWhitespace)
+
+# hapus kata berhenti Anda sendiri
+docs <- tm_map(docs, removeWords, c("rated", "ratedn", "place"))
+
+# Bangun matriks istilah-dokumen
+docs_dtm <- TermDocumentMatrix(docs)
+dtm_m <- as.matrix(docs_dtm)
+```
+
+##Membangun matriks dokumen istilah
+Setelah membersihkan data teks, langkah selanjutnya adalah menghitung kemunculan setiap kata, untuk mengidentifikasi topik populer atau trending. Dengan menggunakan fungsi TermDocumentMatrix()dari paket penambangan teks, Anda dapat membuat Matriks Dokumen – tabel yang berisi frekuensi kata.
+
+Dalam skrip R Anda, tambahkan kode berikut dan jalankan untuk melihat 5 kata teratas yang paling sering ditemukan dalam teks Anda.
+
+```{r}
+# Bangun matriks istilah-dokumen
+docs_dtm <- TermDocumentMatrix(docs)
+dtm_m <- as.matrix(docs_dtm)
+
+# Urutkan berdasarkan penurunan nilai frekuensi
+dtm_v <- sort(rowSums(dtm_m),decreasing=TRUE)
+dtm_d <- data.frame(word = names(dtm_v),freq=dtm_v)
+
+# Tampilkan 5 kata paling sering teratas
+head(dtm_d, 5)
+
+```
+
+Merencanakan 5 kata paling sering menggunakan bagan batang adalah cara dasar yang baik untuk memvisualisasikan data kata yang sering digunakan. Dalam skrip R Anda, tambahkan kode berikut dan jalankan untuk membuat bagan batang, yang akan ditampilkan di bagian Plot RStudio.
+
+```{r}
+# Plot kata-kata yang paling sering
+barplot(dtm_d[1:5,]$freq, las = 2, names.arg = dtm_d[1:5,]$word,
+        col ="lightgreen", main ="Top 5 most frequent words",
+        ylab = "Word frequencies")
+
+```
+
+##Hasilkan Awan Kata
+Awan kata adalah salah satu cara paling populer untuk memvisualisasikan dan menganalisis data kualitatif. Ini adalah gambar yang terdiri dari kata kunci yang ditemukan di dalam badan teks, di mana ukuran setiap kata menunjukkan frekuensinya di badan teks tersebut. Gunakan bingkai data frekuensi kata (tabel) yang dibuat sebelumnya untuk menghasilkan awan kata. Dalam skrip R Anda, tambahkan kode berikut dan jalankan untuk menghasilkan kata cloud dan tampilkan di bagian Plot RStudio.
+
+```{r}
+# mengonversi korpus menjadi data.frame
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing = TRUE)
+df <- data.frame(word = names(v),freq = v)
+
+# membuat wordcloud
+library(wordcloud)
+set.seed(123)
+wordcloud(words = df$word, freq = df$freq, min.freq = 9,
+          max.words = 200, random.order = FALSE, rot.per = 0.35,
+          colors = brewer.pal(8, "Dark2"))
+
+```
+Di bawah ini adalah penjelasan singkat tentang argumen yang digunakan dalam kata cloud function;
+
+kata – kata yang akan diplot
+freq - frekuensi kata-kata
+min.freq – kata-kata yang frekuensinya berada pada atau di atas nilai ambang ini diplot (dalam hal ini, saya telah menyetelnya ke 9)
+max.words – jumlah maksimum kata yang akan ditampilkan pada plot (pada kode di atas, saya telah mengaturnya menjadi 200)
+random.order – Saya telah menyetelnya ke FALSE, sehingga kata-kata diplot dalam urutan penurunan frekuensi
+rot.per – persentase kata yang ditampilkan sebagai teks vertikal (dengan rotasi 90 derajat). Saya telah menetapkannya 0,35 (35%), silakan sesuaikan pengaturan ini dengan preferensi Anda
+warna - mengubah warna kata dari frekuensi terendah ke frekuensi tertinggi
+
+Kata cloud menunjukkan kata-kata tambahan yang sering muncul dan mungkin menarik untuk dianalisis lebih lanjut. Kata-kata seperti "kebutuhan", "dukungan", "isu" (akar kata untuk "masalah", dll. dapat memberikan lebih banyak konteks seputar kata yang paling sering muncul dan membantu mendapatkan pemahaman yang lebih baik tentang tema utama.
